@@ -1,12 +1,10 @@
-version: '3.7'
-
 services:
   minio:
     image: minio/minio:latest
     container_name: minio
     ports:
-      - "9090:9090"
-      - "9001:9001"
+      - "9009:9000" # Map host port 9009 to container port 9000 (S3 API)
+      - "9011:9001" # Map host port 9011 to container port 9001 (Web Console)
     volumes:
       - ./minio-data:/data
     environment:
@@ -14,11 +12,11 @@ services:
       MINIO_ROOT_PASSWORD: password
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://minio:9090/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
-    
+  
   create-buckets:
     image: minio/mc
     container_name: create-buckets
@@ -27,32 +25,13 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9090 minio password;
-      /usr/bin/mc mb --ignore-existing myminio/lake;
+      /usr/bin/mc alias set myminio http://minio:9000 minio password;
+      /usr/bin/mc mb --ignore-existing myminio/datalakehouse;
       exit 0;
       "
   
-  spark-master:
-    image: bitnami/spark:3.5.0
-    container_name: spark-master
-    ports:
-      - "8080:8080"
-      - "7077:7077"
-    environment:
-      - SPARK_MODE=master
-      - SPARK_LOCAL_IP=spark-master
-  
-  spark-worker:
-    image: bitnami/spark:3.5.0
-    container_name: spark-worker
-    depends_on:
-      - spark-master
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-  
   jupyter:
-    build: . # Explicitly build from the Dockerfile
+    build: .
     container_name: jupyter
     ports:
       - "8888:8888"
@@ -60,15 +39,12 @@ services:
       - ./notebooks:/home/jovyan/work
       - ./data:/data
     depends_on:
-      - spark-master
       - minio
       - create-buckets
     environment:
-      - SPARK_MASTER_URL=spark://spark-master:7077
       - MINIO_ACCESS_KEY=minio
       - MINIO_SECRET_KEY=password
-      - MINIO_HOST=http://minio:9090
-      # Pass Delta Lake and Hadoop packages to the PySpark driver
-      - PYSPARK_SUBMIT_ARGS=--packages io.delta:delta-spark_2.13:3.2.0,org.apache.hadoop:hadoop-aws:3.3.4 pyspark-shell
+      - MINIO_HOST=http://minio:9000 # This address remains the same because it refers to the internal Docker network
+      - PYSPARK_SUBMIT_ARGS=--master local[*] --packages io.delta:delta-spark_2.12:3.2.0,org.apache.hadoop:hadoop-aws:3.3.4 pyspark-shell
     command: >
       /bin/bash -c "start-notebook.sh --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''"
