@@ -17,7 +17,9 @@ This is a tutorial for learning the Data Lake House tech stack to be used for in
   <img width="365" height="352" alt="image" src="https://github.com/user-attachments/assets/186d587f-06e3-4447-acdd-352062c9dc23" />
 * Once the notebook file is uploaded, execute the steps one by one and see the outputs to understand the processing.
 * Once the pipeline is executed, you can view the data you created in the Minio web console at http://localhost:9011 (username: minio password: password)
-* After logging into the Minio Web Console, navigate the various buckets under the datalakehouse/deltalake path. Navigate to each of the 3 layers (Bronze, Silver and Gold) to see the Delta and Parquet tables that got created.
+* After logging into the Minio Web Console, navigate the various buckets under the datalakehouse/deltalake path. Navigate to each of the 3 layers (Bronze, Silver and Gold) to see the Delta and Parquet tables that got created, like so:
+  <img width="1920" height="1140" alt="{A6EFC562-E6F9-43DF-BB8B-8510BB75A4E7}" src="https://github.com/user-attachments/assets/87188d6a-8f85-4e7f-ae4b-2f78691b9918" />
+
 * Feel free to edit the pipeline defined in 'notebooks/pipeline_example.ipynb' and learn more about the capabilities of  PySpark, Delta, Parquet and Minio tech stack.
 * To shutdown the setup, execute `docker compose down`.
 
