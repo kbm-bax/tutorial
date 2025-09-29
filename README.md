@@ -1,3 +1,12 @@
+# Introduction
+This is a tutorial for learning the Data Lake House tech stack to be used for in CQI Redesign. Please follow the instructions to proceed with.
+
+# Software Needed
+* Docker Desktop
+* Git
+
+# Instructions For Use
+
 * Checkout this repo
 * Ensure you have docker desktop running
 * go into the tutorial folder and start the tutorial by running `docker compose up --build -d`
