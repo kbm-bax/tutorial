@@ -16,4 +16,10 @@ This is a tutorial for learning the Data Lake House tech stack to be used for in
 * Click on the file upload button to upload the 'notebooks/pipeline_example.ipynb' like so:
   <img width="365" height="352" alt="image" src="https://github.com/user-attachments/assets/186d587f-06e3-4447-acdd-352062c9dc23" />
 * Once the notebook file is uploaded, execute the steps one by one and see the outputs to understand the processing.
-* Feel free to edit the pipeline and learn more about the capabilities of  PySpark, Delta, Parquet and Minio tech stack.
+* Feel free to edit the pipeline defined in 'notebooks/pipeline_example.ipynb' and learn more about the capabilities of  PySpark, Delta, Parquet and Minio tech stack.
+
+
+# Referrences 
+* https://delta.io/pdfs/dldg_databricks.pdf
+* https://delta-io.github.io/delta-rs/how-delta-lake-works/architecture-of-delta-table/
+* https://delta-docs-incubator.netlify.app/
