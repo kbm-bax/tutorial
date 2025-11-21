@@ -1,0 +1,55 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-ingress
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- if .Values.ingress.hosts.jupyter }}
+    - host: {{ .Values.ingress.hosts.jupyter.host | quote }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.jupyter.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "datalakehouse.fullname" $ }}-jupyter-service
+                port:
+                  number: {{ $.Values.jupyter.service.port }}
+          {{- end }}
+    {{- end }}
+    {{- if .Values.ingress.hosts.minio }}
+    - host: {{ .Values.ingress.hosts.minio.host | quote }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.minio.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "datalakehouse.fullname" $ }}-minio-service
+                port:
+                  number: {{ $.Values.minio.service.consolePort }}
+          {{- end }}
+    {{- end }}
+{{- end }}

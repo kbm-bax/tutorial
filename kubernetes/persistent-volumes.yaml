@@ -1,0 +1,59 @@
+# PersistentVolumes for Data Lake House
+# These are local PVs for testing. For production, use dynamic provisioning with a StorageClass
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv
+  labels:
+    app: datalakehouse
+    component: minio
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: delta-storage
+  hostPath:
+    path: /srv/db/delta/minio
+    type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jupyter-notebooks-pv
+  labels:
+    app: datalakehouse
+    component: jupyter-notebooks
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: delta-storage
+  hostPath:
+    path: /srv/db/delta/jupyter-notebooks
+    type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jupyter-data-pv
+  labels:
+    app: datalakehouse
+    component: jupyter-data
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: delta-storage
+  hostPath:
+    path: /srv/db/delta/jupyter-data
+    type: DirectoryOrCreate

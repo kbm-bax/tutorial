@@ -1,0 +1,186 @@
+# Production environment values
+# High availability, persistent storage, LoadBalancer
+
+global:
+  storageClass: "gp3"  # Change based on your cloud provider
+
+minio:
+  enabled: true
+  service:
+    type: LoadBalancer
+  
+  auth:
+    rootUser: admin  # Change in production!
+    rootPassword: "ChangeMe123!"  # Use secrets in production!
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: "gp3"
+  
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  
+  healthcheck:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+
+minioClient:
+  enabled: true
+  buckets:
+    - name: datalakehouse
+      policy: none
+    - name: datalakehouse-backup
+      policy: none
+
+jupyter:
+  enabled: true
+  service:
+    type: LoadBalancer
+  
+  persistence:
+    notebooks:
+      enabled: true
+      size: 50Gi
+      storageClass: "gp3"
+    data:
+      enabled: true
+      size: 100Gi
+      storageClass: "gp3"
+  
+  auth:
+    enabled: true
+    token: "your-secure-token-here"  # Change this!
+  
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2000m"
+    limits:
+      memory: "8Gi"
+      cpu: "4000m"
+
+initContainer:
+  enabled: true
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  hosts:
+    jupyter:
+      host: jupyter.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+    minio:
+      host: minio.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: datalakehouse-tls
+      hosts:
+        - jupyter.yourdomain.com
+        - minio.yourdomain.com
+
+# Security context for production
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Node affinity for production workloads
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - datalakehouse
+          topologyKey: kubernetes.io/hostname
+# Spark Cluster Configuration
+spark:
+  enabled: true
+  image:
+    repository: bitnami/spark
+    tag: 3.5.0
+    pullPolicy: IfNotPresent
+  
+  deltaVersion: "3.2.0"
+  hadoopAwsVersion: "3.3.4"
+  awsSdkVersion: "1.12.262"
+  
+  master:
+    port: 7077
+    webUIPort: 8080
+    
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/allow-shared-ip: mdap
+    
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+  
+  worker:
+    replicas: 2  # Reduced from 3 for better resource utilization
+    port: 7078
+    webUIPort: 8081
+    cores: 2     # Reduced from 4
+    memory: "2g" # Reduced from 4g
+    
+    resources:
+      requests:
+        memory: "2Gi"  # Reduced from 4Gi
+        cpu: "1000m"   # Reduced from 2000m
+      limits:
+        memory: "4Gi"  # Reduced from 8Gi
+        cpu: "2000m"   # Same as before
+
+# StorageClass Configuration
+storageClass:
+  create: true
+  name: delta-storage
+  provisioner: kubernetes.io/no-provisioner
+  volumeBindingMode: WaitForFirstConsumer
+  reclaimPolicy: Retain
+  allowVolumeExpansion: true
+  annotations:
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: hostpath
+      - name: BasePath
+        value: /srv/db/delta
+
+# PersistentVolumes Configuration
+persistentVolumes:
+  create: true
+  reclaimPolicy: Retain
+  basePath: /srv/db/delta

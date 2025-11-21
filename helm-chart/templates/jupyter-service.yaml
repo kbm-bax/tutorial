@@ -1,0 +1,21 @@
+{{- if .Values.jupyter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-jupyter-service
+  labels:
+    {{- include "datalakehouse.jupyter.labels" . | nindent 4 }}
+  {{- with .Values.jupyter.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.jupyter.service.type }}
+  ports:
+  - name: http
+    port: {{ .Values.jupyter.service.port }}
+    targetPort: http
+    protocol: TCP
+  selector:
+    {{- include "datalakehouse.jupyter.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,92 @@
+{{- if .Values.minio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-minio
+  labels:
+    {{- include "datalakehouse.minio.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "datalakehouse.minio.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "datalakehouse.minio.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "datalakehouse.serviceAccountName" . }}
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+      - name: minio
+        image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+        imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - minio server /data --console-address ":9001"
+        env:
+        - name: MINIO_ROOT_USER
+          value: {{ .Values.minio.auth.rootUser | quote }}
+        - name: MINIO_ROOT_PASSWORD
+          value: {{ .Values.minio.auth.rootPassword | quote }}
+        ports:
+        - name: api
+          containerPort: 9000
+          protocol: TCP
+        - name: console
+          containerPort: 9001
+          protocol: TCP
+        {{- if .Values.minio.healthcheck.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.minio.healthcheck.path }}
+            port: api
+          initialDelaySeconds: {{ .Values.minio.healthcheck.initialDelaySeconds }}
+          periodSeconds: {{ .Values.minio.healthcheck.periodSeconds }}
+          timeoutSeconds: {{ .Values.minio.healthcheck.timeoutSeconds }}
+          failureThreshold: {{ .Values.minio.healthcheck.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.minio.healthcheck.path }}
+            port: api
+          initialDelaySeconds: {{ .Values.minio.healthcheck.initialDelaySeconds }}
+          periodSeconds: {{ .Values.minio.healthcheck.periodSeconds }}
+          timeoutSeconds: {{ .Values.minio.healthcheck.timeoutSeconds }}
+          failureThreshold: {{ .Values.minio.healthcheck.failureThreshold }}
+        {{- end }}
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        resources:
+          {{- toYaml .Values.minio.resources | nindent 10 }}
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+      volumes:
+      - name: data
+        {{- if .Values.minio.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "datalakehouse.fullname" . }}-minio-pvc
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

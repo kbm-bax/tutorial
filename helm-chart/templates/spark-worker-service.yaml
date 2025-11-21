@@ -1,0 +1,24 @@
+{{- if .Values.spark.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-spark-worker-service
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: spark-worker
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for workers
+  ports:
+  - name: spark
+    port: {{ .Values.spark.worker.port }}
+    targetPort: spark
+    protocol: TCP
+  - name: webui
+    port: {{ .Values.spark.worker.webUIPort }}
+    targetPort: webui
+    protocol: TCP
+  selector:
+    {{- include "datalakehouse.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: spark-worker
+{{- end }}

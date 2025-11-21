@@ -1,0 +1,144 @@
+{{- if .Values.jupyter.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-jupyter
+  labels:
+    {{- include "datalakehouse.jupyter.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "datalakehouse.jupyter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "datalakehouse.jupyter.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "datalakehouse.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-spark
+        image: busybox:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          echo "Waiting for Spark Master to be ready..."
+          until nc -z {{ include "datalakehouse.fullname" . }}-spark-master-service {{ .Values.spark.master.port }}; do
+            echo "Spark Master not ready, waiting..."
+            sleep 5
+          done
+          echo "Spark Master is ready!"
+        resources:
+          {{- toYaml .Values.initContainer.resources | nindent 10 }}
+      containers:
+      - name: jupyter
+        {{- if .Values.jupyter.customImage.enabled }}
+        image: "{{ .Values.jupyter.customImage.repository }}:{{ .Values.jupyter.customImage.tag }}"
+        {{- else }}
+        image: "{{ .Values.jupyter.image.repository }}:{{ .Values.jupyter.image.tag }}"
+        {{- end }}
+        imagePullPolicy: {{ .Values.jupyter.image.pullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+          # Install delta-spark for PySpark client
+          pip install delta-spark==3.2.0
+          # Start Jupyter notebook
+          {{- if .Values.jupyter.auth.enabled }}
+          start-notebook.sh --ip=0.0.0.0 \
+            {{- if .Values.jupyter.auth.token }}
+            --NotebookApp.token='{{ .Values.jupyter.auth.token }}' \
+            {{- end }}
+            {{- if .Values.jupyter.auth.password }}
+            --NotebookApp.password='{{ .Values.jupyter.auth.password }}'
+            {{- end }}
+          {{- else }}
+          start-notebook.sh --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''
+          {{- end }}
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: {{ .Values.jupyter.env.minioAccessKey | quote }}
+        - name: MINIO_SECRET_KEY
+          value: {{ .Values.jupyter.env.minioSecretKey | quote }}
+        - name: MINIO_HOST
+          value: "http://{{ include "datalakehouse.fullname" . }}-minio-service:9000"
+        - name: PYSPARK_SUBMIT_ARGS
+          value: "--master spark://{{ include "datalakehouse.fullname" . }}-spark-master-service:{{ .Values.spark.master.port }} --packages {{ .Values.jupyter.spark.packages }} pyspark-shell"
+        - name: SPARK_MASTER_URL
+          value: "spark://{{ include "datalakehouse.fullname" . }}-spark-master-service:{{ .Values.spark.master.port }}"
+        ports:
+        - name: http
+          containerPort: 8888
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: notebooks
+          mountPath: {{ .Values.jupyter.persistence.notebooks.mountPath }}
+        - name: data
+          mountPath: {{ .Values.jupyter.persistence.data.mountPath }}
+        - name: spark-config
+          mountPath: /usr/local/spark/conf/spark-defaults.conf
+          subPath: spark-defaults.conf
+          readOnly: true
+        - name: notebook-config
+          mountPath: /home/jovyan/work/pipeline_example.ipynb
+          subPath: pipeline_example.ipynb
+        resources:
+          {{- toYaml .Values.jupyter.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+      volumes:
+      - name: notebooks
+        {{- if .Values.jupyter.persistence.notebooks.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "datalakehouse.fullname" . }}-jupyter-notebooks-pvc
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      - name: data
+        {{- if .Values.jupyter.persistence.data.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "datalakehouse.fullname" . }}-jupyter-data-pvc
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      - name: spark-config
+        configMap:
+          name: {{ include "datalakehouse.fullname" . }}-spark-config
+      - name: notebook-config
+        configMap:
+          name: {{ include "datalakehouse.fullname" . }}-notebooks
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

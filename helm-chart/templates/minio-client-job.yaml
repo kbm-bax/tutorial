@@ -1,0 +1,52 @@
+{{- if .Values.minioClient.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-create-buckets
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio-client
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    metadata:
+      labels:
+        {{- include "datalakehouse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio-client
+    spec:
+      serviceAccountName: {{ include "datalakehouse.serviceAccountName" . }}
+      restartPolicy: OnFailure
+      containers:
+      - name: minio-mc
+        image: "{{ .Values.minioClient.image.repository }}:{{ .Values.minioClient.image.tag }}"
+        imagePullPolicy: {{ .Values.minioClient.image.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          set -e
+          echo "Waiting for MinIO to be ready..."
+          until mc alias set myminio http://{{ include "datalakehouse.fullname" . }}-minio-service:9000 {{ .Values.minio.auth.rootUser }} {{ .Values.minio.auth.rootPassword }}; do
+            echo "MinIO not ready yet, retrying in 5 seconds..."
+            sleep 5
+          done
+          echo "MinIO is ready!"
+          {{- range .Values.minioClient.buckets }}
+          echo "Creating bucket: {{ .name }}"
+          mc mb --ignore-existing myminio/{{ .name }}
+          {{- if .policy }}
+          {{- if ne .policy "none" }}
+          echo "Setting policy {{ .policy }} for bucket {{ .name }}"
+          mc anonymous set {{ .policy }} myminio/{{ .name }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          echo "Bucket creation completed successfully!"
+        resources:
+          {{- toYaml .Values.minioClient.resources | nindent 10 }}
+{{- end }}

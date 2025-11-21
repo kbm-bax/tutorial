@@ -1,0 +1,29 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-minio-service
+  labels:
+    {{- include "datalakehouse.minio.labels" . | nindent 4 }}
+  {{- with .Values.minio.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.minio.service.type }}
+  ports:
+  - name: api
+    port: {{ .Values.minio.service.apiPort }}
+    targetPort: api
+    protocol: TCP
+  - name: api-internal
+    port: 9000
+    targetPort: api
+    protocol: TCP
+  - name: console
+    port: {{ .Values.minio.service.consolePort }}
+    targetPort: console
+    protocol: TCP
+  selector:
+    {{- include "datalakehouse.minio.selectorLabels" . | nindent 4 }}
+{{- end }}

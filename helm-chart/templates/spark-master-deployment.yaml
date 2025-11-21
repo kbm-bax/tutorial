@@ -1,0 +1,129 @@
+{{- if .Values.spark.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-spark-master
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: spark-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "datalakehouse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: spark-master
+  template:
+    metadata:
+      labels:
+        {{- include "datalakehouse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: spark-master
+    spec:
+      serviceAccountName: {{ include "datalakehouse.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: download-jars
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/{{ .Values.spark.hadoopAwsVersion }}/hadoop-aws-{{ .Values.spark.hadoopAwsVersion }}.jar \
+            -o /jars/hadoop-aws-{{ .Values.spark.hadoopAwsVersion }}.jar
+          curl -L https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/{{ .Values.spark.awsSdkVersion }}/aws-java-sdk-bundle-{{ .Values.spark.awsSdkVersion }}.jar \
+            -o /jars/aws-java-sdk-bundle-{{ .Values.spark.awsSdkVersion }}.jar
+          curl -L https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/{{ .Values.spark.deltaVersion }}/delta-spark_2.12-{{ .Values.spark.deltaVersion }}.jar \
+            -o /jars/delta-spark_2.12-{{ .Values.spark.deltaVersion }}.jar
+          curl -L https://repo1.maven.org/maven2/io/delta/delta-storage/{{ .Values.spark.deltaVersion }}/delta-storage-{{ .Values.spark.deltaVersion }}.jar \
+            -o /jars/delta-storage-{{ .Values.spark.deltaVersion }}.jar
+        volumeMounts:
+        - name: spark-jars
+          mountPath: /jars
+      containers:
+      - name: spark-master
+        image: "{{ .Values.spark.image.repository }}:{{ .Values.spark.image.tag }}"
+        imagePullPolicy: {{ .Values.spark.image.pullPolicy }}
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+          # Copy JARs from init container
+          cp /jars/*.jar /opt/bitnami/spark/jars/ || true
+          
+          # Start Spark Master using bitnami script
+          /opt/bitnami/scripts/spark/run.sh
+        env:
+        - name: SPARK_MODE
+          value: "master"
+        - name: SPARK_MASTER_HOST
+          value: "0.0.0.0"
+        - name: SPARK_MASTER_PORT
+          value: "{{ .Values.spark.master.port }}"
+        - name: SPARK_MASTER_WEBUI_PORT
+          value: "{{ .Values.spark.master.webUIPort }}"
+        - name: SPARK_RPC_AUTHENTICATION_ENABLED
+          value: "no"
+        - name: SPARK_RPC_ENCRYPTION_ENABLED
+          value: "no"
+        - name: SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED
+          value: "no"
+        - name: SPARK_SSL_ENABLED
+          value: "no"
+        - name: AWS_ACCESS_KEY_ID
+          value: {{ .Values.minio.auth.rootUser | quote }}
+        - name: AWS_SECRET_ACCESS_KEY
+          value: {{ .Values.minio.auth.rootPassword | quote }}
+        ports:
+        - name: spark
+          containerPort: {{ .Values.spark.master.port }}
+          protocol: TCP
+        - name: webui
+          containerPort: {{ .Values.spark.master.webUIPort }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: webui
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: webui
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: spark-config
+          mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
+          subPath: spark-defaults.conf
+        - name: spark-jars
+          mountPath: /jars
+        resources:
+          {{- toYaml .Values.spark.master.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+      volumes:
+      - name: spark-config
+        configMap:
+          name: {{ include "datalakehouse.fullname" . }}-spark-config
+      - name: spark-jars
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

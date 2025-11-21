@@ -1,0 +1,27 @@
+{{- if .Values.spark.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-spark-master-service
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: spark-master
+  {{- with .Values.spark.master.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.spark.master.service.type }}
+  ports:
+  - name: spark
+    port: {{ .Values.spark.master.port }}
+    targetPort: spark
+    protocol: TCP
+  - name: webui
+    port: {{ .Values.spark.master.webUIPort }}
+    targetPort: webui
+    protocol: TCP
+  selector:
+    {{- include "datalakehouse.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: spark-master
+{{- end }}

@@ -1,0 +1,126 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  $ helm get all {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{- if .Values.jupyter.enabled }}
+
+===========================================
+Jupyter Notebook Access
+===========================================
+
+{{- if eq .Values.jupyter.service.type "LoadBalancer" }}
+1. Get the Jupyter URL by running:
+
+   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "datalakehouse.fullname" . }}-jupyter-service --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+   echo "Jupyter URL: http://$SERVICE_IP:{{ .Values.jupyter.service.port }}"
+
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+{{- else if eq .Values.jupyter.service.type "ClusterIP" }}
+1. Access Jupyter using port-forward:
+
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "datalakehouse.fullname" . }}-jupyter-service 8888:{{ .Values.jupyter.service.port }}
+   
+   Then access: http://localhost:8888
+{{- end }}
+
+{{- if not .Values.jupyter.auth.enabled }}
+   Note: Authentication is DISABLED for tutorial purposes.
+{{- end }}
+
+{{- end }}
+
+{{- if .Values.minio.enabled }}
+
+===========================================
+MinIO Console Access
+===========================================
+
+{{- if eq .Values.minio.service.type "LoadBalancer" }}
+1. Get the MinIO Console URL by running:
+
+   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "datalakehouse.fullname" . }}-minio-service --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+   echo "MinIO Console URL: http://$SERVICE_IP:{{ .Values.minio.service.consolePort }}"
+
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+{{- else if eq .Values.minio.service.type "ClusterIP" }}
+1. Access MinIO Console using port-forward:
+
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "datalakehouse.fullname" . }}-minio-service 9001:{{ .Values.minio.service.consolePort }}
+   
+   Then access: http://localhost:9001
+{{- end }}
+
+   Username: {{ .Values.minio.auth.rootUser }}
+   Password: {{ .Values.minio.auth.rootPassword }}
+
+2. MinIO S3 API endpoint (for internal use):
+   http://{{ include "datalakehouse.fullname" . }}-minio-service:{{ .Values.minio.service.apiPort }}
+
+{{- end }}
+
+{{- if .Values.spark.enabled }}
+
+===========================================
+Spark Cluster Access
+===========================================
+
+{{- if eq .Values.spark.master.service.type "LoadBalancer" }}
+1. Get the Spark Master UI URL by running:
+
+   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "datalakehouse.fullname" . }}-spark-master-service --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+   echo "Spark Master UI: http://$SERVICE_IP:{{ .Values.spark.master.webUIPort }}"
+
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+{{- else if eq .Values.spark.master.service.type "ClusterIP" }}
+1. Access Spark Master UI using port-forward:
+
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "datalakehouse.fullname" . }}-spark-master-service 8080:{{ .Values.spark.master.webUIPort }}
+   
+   Then access: http://localhost:8080
+{{- end }}
+
+2. Spark Master URL (for applications):
+   spark://{{ include "datalakehouse.fullname" . }}-spark-master-service:{{ .Values.spark.master.port }}
+
+3. Number of Worker Nodes: {{ .Values.spark.worker.replicas }}
+
+{{- end }}
+
+===========================================
+Getting Started
+===========================================
+
+1. Access Jupyter Notebook using the URL above
+2. Open the 'pipeline_example.ipynb' notebook
+3. Run the cells to execute the Delta Lake pipeline
+4. View the created data in MinIO Console under:
+   - datalakehouse/deltalake/bronze/users/
+   - datalakehouse/deltalake/silver/users/
+   - datalakehouse/deltalake/gold/user_summary/
+
+===========================================
+Useful Commands
+===========================================
+
+# Check pod status
+kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+# View logs
+kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=jupyter" -f
+
+# Describe resources
+kubectl describe deployment -n {{ .Release.Namespace }} {{ include "datalakehouse.fullname" . }}-jupyter
+
+===========================================
+For more information, visit:
+https://delta.io/
+https://min.io/
+===========================================

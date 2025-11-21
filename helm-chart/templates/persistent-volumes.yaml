@@ -1,0 +1,58 @@
+{{- if .Values.persistentVolumes.create }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-minio-pv
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  capacity:
+    storage: {{ .Values.minio.persistence.size }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: {{ .Values.persistentVolumes.reclaimPolicy }}
+  storageClassName: {{ .Values.storageClass.name }}
+  hostPath:
+    path: {{ .Values.persistentVolumes.basePath }}/minio
+    type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-jupyter-notebooks-pv
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: jupyter-notebooks
+spec:
+  capacity:
+    storage: {{ .Values.jupyter.persistence.notebooks.size }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: {{ .Values.persistentVolumes.reclaimPolicy }}
+  storageClassName: {{ .Values.storageClass.name }}
+  hostPath:
+    path: {{ .Values.persistentVolumes.basePath }}/jupyter-notebooks
+    type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-jupyter-data-pv
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: jupyter-data
+spec:
+  capacity:
+    storage: {{ .Values.jupyter.persistence.data.size }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: {{ .Values.persistentVolumes.reclaimPolicy }}
+  storageClassName: {{ .Values.storageClass.name }}
+  hostPath:
+    path: {{ .Values.persistentVolumes.basePath }}/jupyter-data
+    type: DirectoryOrCreate
+{{- end }}

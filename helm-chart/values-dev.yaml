@@ -1,0 +1,70 @@
+"# Development environment values
+# Minimal resources, no persistence
+
+global:
+  storageClass: "delta-storage"
+
+# StorageClass Configuration
+storageClass:
+  create: true
+  name: delta-storage
+  provisioner: kubernetes.io/no-provisioner
+  volumeBindingMode: WaitForFirstConsumer
+  reclaimPolicy: Retain
+  allowVolumeExpansion: true
+  annotations:
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: hostpath
+      - name: BasePath
+        value: /srv/db/delta
+
+# PersistentVolumes Configuration
+persistentVolumes:
+  create: true
+  reclaimPolicy: Retain
+  basePath: /srv/db/delta
+
+minio:
+  enabled: true
+  service:
+    type: NodePort
+    apiNodePort: 30900
+    consoleNodePort: 30901
+  
+  persistence:
+    enabled: false  # Use emptyDir for dev
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+jupyter:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 30888
+  
+  persistence:
+    notebooks:
+      enabled: false  # Use emptyDir for dev
+    data:
+      enabled: false  # Use emptyDir for dev
+  
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+initContainer:
+  enabled: true
+
+ingress:
+  enabled: false"

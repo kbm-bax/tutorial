@@ -1,0 +1,23 @@
+{{- if .Values.configMaps.sparkDefaults.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "datalakehouse.fullname" . }}-spark-config
+  labels:
+    {{- include "datalakehouse.labels" . | nindent 4 }}
+data:
+  spark-defaults.conf: |
+    spark.sql.extensions                  io.delta.sql.DeltaSparkSessionExtension
+    spark.sql.catalog.spark_catalog       org.apache.spark.sql.delta.catalog.DeltaCatalog
+
+    spark.executorEnv.AWS_ACCESS_KEY_ID         {{ .Values.minio.auth.rootUser }}
+    spark.executorEnv.AWS_SECRET_ACCESS_KEY     {{ .Values.minio.auth.rootPassword }}
+    
+    spark.hadoop.fs.s3a.access.key              {{ .Values.minio.auth.rootUser }}
+    spark.hadoop.fs.s3a.secret.key              {{ .Values.minio.auth.rootPassword }}
+    spark.hadoop.fs.s3a.endpoint                http://{{ include "datalakehouse.fullname" . }}-minio-service:9000
+    spark.hadoop.fs.s3a.path.style.access       true
+    spark.hadoop.fs.s3a.impl                    org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.aws.credentials.provider org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+    spark.hadoop.fs.s3a.connection.ssl.enabled  false
+{{- end }}
