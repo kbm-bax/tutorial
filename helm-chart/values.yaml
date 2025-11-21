@@ -1,0 +1,262 @@
+# Default values for datalakehouse
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  storageClass: "delta-storage"  # Using delta-storage StorageClass with pre-created PVs
+
+# StorageClass Configuration
+storageClass:
+  create: true
+  name: delta-storage
+  provisioner: kubernetes.io/no-provisioner
+  volumeBindingMode: WaitForFirstConsumer
+  reclaimPolicy: Retain
+  allowVolumeExpansion: true
+  annotations:
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: hostpath
+      - name: BasePath
+        value: /srv/db/delta
+
+# PersistentVolumes Configuration
+persistentVolumes:
+  create: true
+  reclaimPolicy: Retain
+  basePath: /srv/db/delta
+
+# MinIO Configuration
+minio:
+  enabled: true
+  image:
+    repository: minio/minio
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: LoadBalancer
+    apiPort: 9999
+    consolePort: 9991
+    annotations:
+      metallb.universe.tf/allow-shared-ip: mdap
+  
+  auth:
+    rootUser: minio
+    rootPassword: password
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: "delta-storage"
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  healthcheck:
+    enabled: true
+    path: /minio/health/live
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 20
+    failureThreshold: 3
+
+# MinIO Client (mc) for bucket creation
+minioClient:
+  enabled: true
+  image:
+    repository: minio/mc
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  buckets:
+    - name: datalakehouse
+      policy: none  # Options: none, download, upload, public
+  
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# Jupyter Notebook Configuration
+jupyter:
+  enabled: true
+  image:
+    repository: jupyter/pyspark-notebook
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  # Custom image build (if you want to use the Dockerfile)
+  customImage:
+    enabled: false
+    repository: your-registry/datalakehouse-jupyter
+    tag: latest
+  
+  service:
+    type: LoadBalancer
+    port: 8888
+    annotations:
+      metallb.universe.tf/allow-shared-ip: mdap
+  
+  persistence:
+    notebooks:
+      enabled: true
+      size: 5Gi
+      storageClass: "delta-storage"
+      mountPath: /home/jovyan/work
+    data:
+      enabled: true
+      size: 5Gi
+      storageClass: "delta-storage"
+      mountPath: /data
+  
+  # Spark configuration (will connect to Spark cluster)
+  spark:
+    packages: "io.delta:delta-spark_2.12:3.2.0,org.apache.hadoop:hadoop-aws:3.3.4"
+  
+  # Environment variables
+  env:
+    minioAccessKey: minio
+    minioSecretKey: password
+    # minioHost will be set dynamically in the deployment template
+  
+  # Notebook authentication (disabled for tutorial)
+  auth:
+    enabled: false
+    token: ""
+    password: ""
+  
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+
+# Init container to build custom Jupyter image dependencies
+initContainer:
+  enabled: true
+  image:
+    repository: busybox
+    tag: latest
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# Ingress configuration (optional)
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    jupyter:
+      host: jupyter.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+    minio:
+      host: minio.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: datalakehouse-tls
+    #   hosts:
+    #     - jupyter.example.com
+    #     - minio.example.com
+
+# ConfigMaps and Secrets
+configMaps:
+  sparkDefaults:
+    enabled: true
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "datalakehouse-sa"
+
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsNonRoot: true
+
+# Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Spark Cluster Configuration
+spark:
+  enabled: true
+  image:
+    repository: bitnamilegacy/spark
+    tag: 3.5.0
+    pullPolicy: IfNotPresent
+  
+  # Versions for dependencies
+  deltaVersion: "3.2.0"
+  hadoopAwsVersion: "3.3.4"
+  awsSdkVersion: "1.12.262"
+  
+  # Spark Master Configuration
+  master:
+    port: 7077
+    webUIPort: 8080
+    
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/allow-shared-ip: mdap
+    
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  
+  # Spark Worker Configuration
+  worker:
+    replicas: 1  # Reduced to 1 for resource constraints
+    port: 7078
+    webUIPort: 8081
+    cores: 2
+    memory: "2g"
+    
+    resources:
+      requests:
+        memory: "1Gi"  # Reduced for better scheduling
+        cpu: "500m"    # Reduced for better scheduling
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
