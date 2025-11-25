@@ -48,3 +48,23 @@ services:
       - PYSPARK_SUBMIT_ARGS=--master local[*] --packages io.delta:delta-spark_2.12:3.2.0,org.apache.hadoop:hadoop-aws:3.3.4 pyspark-shell
     command: >
       /bin/bash -c "start-notebook.sh --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''"
+  
+  dremio:
+    image: dremio/dremio-oss:latest
+    container_name: dremio
+    ports:
+      - "9047:9047"   # Web UI
+      - "31010:31010"  # ODBC/JDBC clients
+      - "45678:45678"  # Inter-node communication
+      - "32010:32010"  # Apache Arrow Flight clients
+    volumes:
+      - dremio-data:/opt/dremio/data
+    depends_on:
+      - minio
+      - create-buckets
+    environment:
+      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+      - DREMIO_PLUGINS_DELTALAKE_ENABLED=true
+
+volumes:
+  dremio-data:

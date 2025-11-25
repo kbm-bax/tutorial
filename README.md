@@ -1,5 +1,11 @@
 # Introduction
-This is a tutorial for learning the Data Lake House tech stack to be used for in CQI Redesign. Please follow the instructions to proceed with.
+This is a tutorial for learning the Data Lake House tech stack to be used for in CQI Redesign. This tutorial includes:
+* **PySpark** - Data processing engine
+* **Delta Lake** - ACID transactions and time travel for data lakes
+* **MinIO** - S3-compatible object storage
+* **Dremio** - SQL query engine for analytics
+
+Please follow the instructions to proceed with.
 
 # Software Needed
 * Docker Desktop
@@ -21,13 +27,23 @@ This is a tutorial for learning the Data Lake House tech stack to be used for in
   <img width="1920" height="1140" alt="{A6EFC562-E6F9-43DF-BB8B-8510BB75A4E7}" src="https://github.com/user-attachments/assets/87188d6a-8f85-4e7f-ae4b-2f78691b9918" />
 
 * Feel free to edit the pipeline defined in 'notebooks/pipeline_example.ipynb' and learn more about the capabilities of  PySpark, Delta, Parquet and Minio tech stack.
+* **NEW: Query with Dremio** - Access Dremio at http://localhost:9047 to query the Delta Lake tables using SQL. See [DREMIO_SETUP_GUIDE.md](DREMIO_SETUP_GUIDE.md) for detailed setup instructions.
 * To shutdown the setup, execute `docker compose down`.
 
 # Common Troubleshooting steps
 * Incase you face any port conflicts, make sure you change the respective conflicting ports in the docker-compose.yaml and relaunch the setup.
 
 
-# Referrences 
+# Documentation
+
+* 🚀 **[QUICK_START.md](QUICK_START.md)** - Get started in 5 minutes
+* 📖 **[DREMIO_SETUP_GUIDE.md](DREMIO_SETUP_GUIDE.md)** - Detailed Dremio configuration and usage
+* 🔧 **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+* 🏗️ **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design
+* 💻 **[notebooks/dremio_queries.sql](notebooks/dremio_queries.sql)** - SQL query examples
+
+# References 
 * https://delta.io/pdfs/dldg_databricks.pdf
 * https://delta-io.github.io/delta-rs/how-delta-lake-works/architecture-of-delta-table/
 * https://delta-docs-incubator.netlify.app/
+* https://docs.dremio.com/
