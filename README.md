@@ -16,6 +16,7 @@ Please follow the instructions to proceed with.
 * Checkout this repo
 * Ensure you have docker desktop running
 * go into the tutorial folder and start the tutorial by running `docker compose up --build -d` . This command will take 5-10 mins (based on your Internet speed) to complete for the first time as it will downloads all the container images needed to run the tutorial.
+* **NEW:** Dremio will be automatically configured with MinIO as a data source. Default credentials: `admin` / `admin123`
 * Navigate to http://localhost:8888 to access the Jupyter notebook, like so (there is no authentication/authorization needed) :
   <img width="1311" height="942" alt="{248B4005-9FDF-4C47-A172-22E56282F2B0}" src="https://github.com/user-attachments/assets/afeabd2d-9484-45dd-9d24-7745610e71ac" />
 

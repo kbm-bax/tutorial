@@ -7,17 +7,17 @@
 
 -- Query Bronze Layer (Raw Data)
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.bronze.users
+FROM "my-delta".deltalake.bronze.users
 ORDER BY id;
 
 -- Query Silver Layer (Cleaned Data)
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.silver.users
+FROM "my-delta".deltalake.silver.users
 ORDER BY id;
 
 -- Query Gold Layer (Aggregated Data)
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.gold.user_summary
+FROM "my-delta".deltalake.gold.user_summary
 ORDER BY count DESC;
 
 
@@ -27,10 +27,10 @@ ORDER BY count DESC;
 
 -- Count records by layer
 SELECT 'Bronze' as layer, COUNT(*) as record_count
-FROM "MinIO-DataLakeHouse".deltalake.bronze.users
+FROM "my-delta".deltalake.bronze.users
 UNION ALL
 SELECT 'Silver' as layer, COUNT(*) as record_count
-FROM "MinIO-DataLakeHouse".deltalake.silver.users;
+FROM "my-delta".deltalake.silver.users;
 
 -- Join Silver and Gold layers
 SELECT 
@@ -38,14 +38,14 @@ SELECT
     s.name,
     s.timestamp,
     g.count as aggregated_count
-FROM "MinIO-DataLakeHouse".deltalake.silver.users s
-LEFT JOIN "MinIO-DataLakeHouse".deltalake.gold.user_summary g
+FROM "my-delta".deltalake.silver.users s
+LEFT JOIN "my-delta".deltalake.gold.user_summary g
     ON s.name = g.name
 ORDER BY s.id;
 
 -- Filter by date
 SELECT *
-FROM "MinIO-DataLakeHouse".deltalake.bronze.users
+FROM "my-delta".deltalake.bronze.users
 WHERE timestamp >= '2025-01-02'
 ORDER BY timestamp;
 
@@ -56,12 +56,12 @@ ORDER BY timestamp;
 
 -- Query a specific version of the table
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.gold.user_summary
+FROM "my-delta".deltalake.gold.user_summary
 AT VERSION AS OF 0;
 
 -- Query as of a specific timestamp
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.gold.user_summary
+FROM "my-delta".deltalake.gold.user_summary
 AT TIMESTAMP AS OF '2025-01-15 10:00:00';
 
 -- Compare current vs previous version
@@ -69,13 +69,13 @@ SELECT
     'Current' as version,
     name,
     count
-FROM "MinIO-DataLakeHouse".deltalake.gold.user_summary
+FROM "my-delta".deltalake.gold.user_summary
 UNION ALL
 SELECT 
     'Previous' as version,
     name,
     count
-FROM "MinIO-DataLakeHouse".deltalake.gold.user_summary
+FROM "my-delta".deltalake.gold.user_summary
 AT VERSION AS OF 0;
 
 
@@ -87,7 +87,7 @@ AT VERSION AS OF 0;
 SELECT 
     SUBSTRING(name, 1, 1) as first_letter,
     COUNT(*) as user_count
-FROM "MinIO-DataLakeHouse".deltalake.silver.users
+FROM "my-delta".deltalake.silver.users
 GROUP BY SUBSTRING(name, 1, 1)
 ORDER BY first_letter;
 
@@ -95,7 +95,7 @@ ORDER BY first_letter;
 SELECT 
     timestamp,
     COUNT(*) as records_per_day
-FROM "MinIO-DataLakeHouse".deltalake.bronze.users
+FROM "my-delta".deltalake.bronze.users
 GROUP BY timestamp
 ORDER BY timestamp;
 
@@ -110,13 +110,13 @@ SELECT
     COUNT(id) as non_null_ids,
     COUNT(name) as non_null_names,
     COUNT(timestamp) as non_null_timestamps
-FROM "MinIO-DataLakeHouse".deltalake.silver.users;
+FROM "my-delta".deltalake.silver.users;
 
 -- Find duplicate IDs
 SELECT 
     id,
     COUNT(*) as occurrence_count
-FROM "MinIO-DataLakeHouse".deltalake.silver.users
+FROM "my-delta".deltalake.silver.users
 GROUP BY id
 HAVING COUNT(*) > 1;
 
@@ -134,10 +134,10 @@ SELECT
     b.timestamp as ingestion_time,
     s.timestamp as processed_time,
     g.count as summary_count
-FROM "MinIO-DataLakeHouse".deltalake.bronze.users b
-LEFT JOIN "MinIO-DataLakeHouse".deltalake.silver.users s
+FROM "my-delta".deltalake.bronze.users b
+LEFT JOIN "my-delta".deltalake.silver.users s
     ON b.id = s.id
-LEFT JOIN "MinIO-DataLakeHouse".deltalake.gold.user_summary g
+LEFT JOIN "my-delta".deltalake.gold.user_summary g
     ON b.name = g.name
 ORDER BY b.id;
 
@@ -149,12 +149,12 @@ ORDER BY b.id;
 -- Use EXPLAIN to see query execution plan
 EXPLAIN PLAN FOR
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.silver.users
+FROM "my-delta".deltalake.silver.users
 WHERE id > 1;
 
 -- Limit results for testing
 SELECT * 
-FROM "MinIO-DataLakeHouse".deltalake.bronze.users
+FROM "my-delta".deltalake.bronze.users
 LIMIT 10;
 
 
